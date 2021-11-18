@@ -1,4 +1,4 @@
-# import sys
+import os
 import re
 import argparse
 
@@ -14,10 +14,29 @@ class frame:
     parser.add_argument("-p", "--regex_pattern", help="Regex pattern")
     parser.add_argument("-l", "--insert_line", help="Insert line number (works with insert mode)", type=int)
     parser.add_argument("-r", "--replace_word", help="Replace word", required=True)
+    parser.add_argument("-d", "--debug", help="Debug mode", action="store_true")
     args = parser.parse_args()
 
     def __init__(self):
         pass
+
+    def debug(self):
+        print(type(self.args))
+        print("args:" + self.args)
+
+    def escape(self, input_text : str) -> str:
+        return input_text.replace("__quotation__", "\"")
+
+    def text_write(self, input_text, replace_text, overwrite : bool):
+        if overwrite:
+            with open(input_text, "w") as f:
+                f.write(replace_text)
+        else:
+            text_dir = os.path.dirname(self.args.input)
+            text_name = os.path.splitext(os.path.basename(self.args.input))[0]
+            replace_text_path = os.path.join(text_dir, text_name + "_replace.txt")
+            with open(replace_text_path, "w") as f:
+                f.write(replace_text)
 
     def text_Replace(self, input_text, search_word, replace_word):
         """テキストファイルを読み込んで文字列を置換、元のファイルを上書きする
@@ -25,8 +44,7 @@ class frame:
         with open(input_text, "r") as f:
             source_text = f.read()  # ファイルを読み込む
         replace_text = source_text.replace(search_word, replace_word)  # 文字列を置換
-        with open(input_text, "w") as f:
-            f.write(replace_text)  # ファイルに上書き
+        self.text_write(input_text, replace_text, self.args.overwrite)
 
     def text_Regex(self, input_text, regex_pattern, replace_word):
         """TODO テキストファイルを読み込んで正規表現で置換、元のファイルを上書きする
@@ -42,20 +60,21 @@ class frame:
         """
         with open(input_text, "r") as f:
             source_text = f.readlines()
-        source_text.insert(insert_line, insert_word)
-        with open(input_text, "w") as f:
-            f.writelines(source_text)
-
-    def debug(self):
-        print("args:" + self.args)
+        replace_text_list = source_text.insert(insert_line, insert_word)
+        replace_text = "\n".join(replace_text_list)
+        self.text_write(input_text, replace_text, self.args.overwrite)
+        # with open(input_text, "w") as f:
+        #     f.writelines(replace_text)
 
     def main(self):
+        if self.args.debug:
+            self.debug()
         if self.args.edit_mode == "replace":
-            self.text_Replace(self.args.input, self.args.search_word, self.args.replace_word)
+            self.text_Replace(self.args.input, self.escape(self.args.search_word), self.escape(self.args.replace_word))
         elif self.args.edit_mode == "regex":
-            self.text_Regex(self.args.input, self.args.regex_pattern, self.args.replace_word)
+            self.text_Regex(self.args.input, self.escape(self.args.regex_pattern), self.escape(self.args.replace_word))
         elif self.args.edit_mode == "insert":
-            self.text_insert(self.args.input, self.args.insert_line, self.args.replace_word)
+            self.text_insert(self.args.input, self.args.insert_line, self.escape(self.args.replace_word))
 
 if __name__ == '__main__':
     main = frame()
